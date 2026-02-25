@@ -1,0 +1,24 @@
+```gitignore
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+
+# IDE
+.idea/
+
+# Outputs
+outputs/
+*.pt
+*.pth
+*.pkl
+*.log
+
+# Data (keep demo only)
+data/*
+!data/README.md
+!data/demo/
+!data/demo/**
