@@ -1,7 +1,7 @@
 @echo off
 cd /d "%~dp0.."
 
-REM --- Use the shared deep learning venv Python (EDIT THIS PATH) ---
+REM --- Use the shared deep learning venv Python (home/office/workstation) ---
 set PYTHON_EXE=D:\PycharmProjects\DeepLearning-env\Scripts\python.exe
 @REM set PYTHON_EXE=C:\envs\deep_env\Scripts\python.exe
 
@@ -17,6 +17,7 @@ REM Install deps into that venv (should be mostly "Requirement already satisfied
 @REM "%PYTHON_EXE%" -m pip install -r requirements.txt
 
 REM Run training
-"%PYTHON_EXE%" src\train.py --config configs\train.yaml
+"%PYTHON_EXE%" src\train.py --config configs\train_cof.yaml
+@REM "%PYTHON_EXE%" src\train.py --config configs\train_wear.yaml
 
 pause
