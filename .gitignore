@@ -37,3 +37,6 @@ data/*
 !data/README.md
 !data/demo/
 !data/demo/**
+
+# Local-only screening modules
+/src/screening/

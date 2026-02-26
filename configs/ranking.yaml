@@ -1,0 +1,48 @@
+project:
+  output_dir: "outputs/latest"
+
+inputs:
+  cof_file: "outputs/latest/backward_predict_cof.xlsx"
+  wear_file: "outputs/latest/backward_predict_wear.xlsx"
+  # join keys: the 6 composition columns must match in both files
+  composition_columns: ["a", "b", "c", "d", "e", "f"]
+
+cost_index:
+  # unit prices corresponding to the 6 components
+  unit_prices: [80, 25, 10, 10, 10, 10]
+  # how to count number of components (non-zero)
+  count_eps: 0.0
+  # cost index formula weights
+  weight_n_components: 0.25
+  weight_price: 0.75
+
+tribo_index:
+  # uses region2 and region3 means only
+  # naming follows predict.py output: {output_name}_m2, {output_name}_m3
+  cof_region2_col: "cof_m2"
+  cof_region3_col: "cof_m3"
+  wear_region2_col: "wear_m2"
+  wear_region3_col: "wear_m3"
+  # weights inside denominator
+  w_cof_r2: 0.65
+  w_wear_r2: 0.35
+  w_cof_r3: 0.30
+  w_wear_r3: 0.70
+
+selection:
+  # 1) best performance
+  best_tribo_by: "tribo_index"          # max
+
+  # 2) best value (top-right)
+  # use Pareto front in (tribo_index, cost_index) space, then pick knee or max of a combined score
+  value_method: "pareto_then_score"     # pareto_then_score | weighted_sum
+  pareto:
+    maximize: ["tribo_index", "cost_index"]
+  value_score:
+    # normalize to [0,1] then score = alpha*tribo_norm + (1-alpha)*cost_norm
+    alpha: 0.5
+
+output:
+  ranking_file: "outputs/latest/ranking_full.xlsx"
+  pareto_file: "outputs/latest/ranking_pareto.xlsx"
+  best_summary_file: "outputs/latest/best_summary.json"

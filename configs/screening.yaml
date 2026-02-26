@@ -1,0 +1,43 @@
+project:
+  run_dir: "outputs/latest"        # where trained_net.pt is located
+  model_file: "trained_net.pt"
+  output_dir: "outputs/latest"
+  output_prefix: "backward_predict"
+
+runtime:
+  device: "auto"                   # auto|cpu|cuda
+  use_parallel: false              # Python version: default false (can add later via multiprocessing)
+  verbose: true
+
+composition_grid:
+  # a...f: six components, with constraint a+b+c+d+e+f=1 and f on 0.01 grid
+  a: { start: 0.50, end: 1.00, step: 0.02 }   # Matrix
+  b: { start: 0.00, end: 0.20, step: 0.02 }   # SCF
+  c: { start: 0.00, end: 0.10, step: 0.01 }
+  d: { start: 0.00, end: 0.10, step: 0.01 }
+  e: { start: 0.00, end: 0.10, step: 0.01 }
+  f: { start: 0.00, end: 0.10, step: 0.01 }   # for bounds check only
+  f_grid_step: 0.01
+
+condition_grid:
+  p: { start: 0.5, end: 8.0, step: 0.5 }       # pa..pe..gridStep
+  v: { start: 0.5, end: 4.0, step: 0.5 }       # va..ve..gridStep
+
+pv_regions:
+  # mask1: pv <= 5
+  # mask2: pv <= 15
+  # mask3: 15 <= pv <= 32
+  region1: { type: "le", value: 5 }
+  region2: { type: "le", value: 15 }
+  region3: { type: "between", low: 15, high: 32 }
+
+prediction:
+  minibatch_size: 16384
+  output_name: "cof"                 # predicted variable name (Pdt_vbl), for column naming
+#  output_name: "wear"
+
+output:
+  save_table: true
+  format: "xlsx"                   # xlsx|csv|parquet
+  file: "outputs/latest/backward_predict_cof.xlsx"
+#  file: "outputs/latest/backward_predict_wear.xlsx"
