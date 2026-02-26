@@ -17,6 +17,21 @@ outputs/
 *.pkl
 *.log
 
+# --- DATA: never commit real datasets ---
+TrainingData-ANN-All.xlsx
+**/TrainingData-ANN-All.xlsx
+
+# Common spreadsheet/data dumps
+*.xlsx
+*.xls
+*.csv
+*.tsv
+*.parquet
+*.feather
+*.h5
+*.hdf5
+*.mat
+
 # Data (keep demo only)
 data/*
 !data/README.md

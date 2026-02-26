@@ -1,0 +1,51 @@
+project:
+  seed: 42
+  loops: 5
+  output_dir: "outputs"
+  save_tag: "u"   # predicted variable
+
+data:
+  xlsx_path: "TrainingData-ANN-All.xlsx"
+  sheet_name: "Train"
+  input_cols:
+    start: 1
+    end: 9
+  target_column_name: "u"   # match header cell exactly
+
+split:
+  train_ratio: 0.90
+  val_ratio: 0.05
+  test_ratio: 0.05
+  mode: "random"
+  shuffle: true
+
+preprocess:
+  x_scaler: "minmax"
+  y_scaler: "minmax"
+  remove_constant_rows: true
+
+model:
+  hidden_layers: [12, 5, 1]
+  activation: "tanh"
+  output_positive: true
+  positive_mode: "softplus"   # ensure predictions > 0
+
+train:
+  optimizer: "adam"           # or "lbfgs"
+  lr: 0.001
+  weight_decay: 0.0
+  epochs: 600
+  target_mse: 0.001
+  min_grad: 1.0e-7            # used only if we implement grad stop (optional)
+  device: "auto"              # auto|cpu|cuda
+  patience: 50
+  log_every: 20
+
+validity_check:
+  require_positive_on_grid: true
+  grid:
+    pa: 0.5
+    pe: 8.0
+    va: 0.5
+    ve: 4.0
+    step: 0.5
