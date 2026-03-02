@@ -132,6 +132,17 @@ def split_data(x: np.ndarray, y: np.ndarray, cfg: Dict[str, Any], seed: int) -> 
 def mse_np(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.mean((a - b) ** 2))
 
+def mse_both(y_true_orig: np.ndarray,
+             y_pred_orig: np.ndarray,
+             y_scaler: MinMaxScaler) -> tuple[float, float]:
+    """
+    Return (mse_orig, mse_scaled) using the SAME samples.
+    """
+    mse_orig = mse_np(y_true_orig, y_pred_orig)
+    y_true_s = y_scaler.transform(y_true_orig)
+    y_pred_s = y_scaler.transform(y_pred_orig)
+    mse_scaled = mse_np(y_true_s, y_pred_s)
+    return mse_orig, mse_scaled
 
 def mre_np(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     # MATLAB: abs((di-oi)/di), then mean omitnan
@@ -284,7 +295,9 @@ def main():
 
     z = 1
     attempt_seed_base = int(cfg["project"]["seed"])
-    while z <= loops:
+    max_attempts_total = 200
+    while z <= loops and ttl < max_attempts_total:
+    # while z <= loops:
         ttl += 1
         split_seed = attempt_seed_base + ttl * 101  # deterministic but different each attempt
 
@@ -327,9 +340,16 @@ def main():
         y_val_pred = y_scaler.inverse_transform(y_val_pred_s)
         y_test_pred = y_scaler.inverse_transform(y_test_pred_s)
 
-        train_mse = mse_np(sd.y_train, y_train_pred)
-        val_mse = mse_np(sd.y_val, y_val_pred)
-        test_mse = mse_np(sd.y_test, y_test_pred)
+        # train_mse = mse_np(sd.y_train, y_train_pred)
+        # val_mse = mse_np(sd.y_val, y_val_pred)
+        # test_mse = mse_np(sd.y_test, y_test_pred)
+
+        train_mse, train_mse_s = mse_both(sd.y_train, y_train_pred, y_scaler)
+        val_mse, val_mse_s = mse_both(sd.y_val, y_val_pred, y_scaler)
+        test_mse, test_mse_s = mse_both(sd.y_test, y_test_pred, y_scaler)
+
+        print(f"[Attempt {ttl}] MSE(orig): train={train_mse:.6g}, val={val_mse:.6g}, test={test_mse:.6g}")
+        print(f"[Attempt {ttl}] MSE(scl ): train={train_mse_s:.6g}, val={val_mse_s:.6g}, test={test_mse_s:.6g}")
 
         # overall outputs like MATLAB outputs = net(inputs) (here all X)
         with torch.no_grad():
@@ -340,10 +360,14 @@ def main():
 
         # positivity check on grid
         positive_ok = True
+        grid_min = float("nan")
+        grid_max = float("nan")
         if cfg["validity_check"]["require_positive_on_grid"]:
             with torch.no_grad():
                 grid_pred_s = model(torch.from_numpy(x_scaler.transform(grid_X)).to(device)).cpu().numpy()
             grid_pred = y_scaler.inverse_transform(grid_pred_s)
+            grid_min = float(np.min(grid_pred))
+            grid_max = float(np.max(grid_pred))
             positive_ok = bool(np.all(grid_pred > 0))
 
         # validity criteria (match MATLAB: valPerformance <= targetMSE AND all(Pdt_output>0))
@@ -382,8 +406,8 @@ def main():
             })
             z += 1
             print(
-                f"[ACCEPT] ttl={ttl} z={z} best_val_scaled={best_val_mse_scaled:.4e} val_mse_orig={val_mse:.4e} positive={positive_ok}",
-                flush=True)
+                f"[ACCEPT] ttl={ttl} z={z} best_val_scaled={best_val_mse_scaled:.4e} "
+                f"val_mse_orig={val_mse:.4e} positive={positive_ok} grid_min={grid_min:.4e} ",flush=True)
         else:
             # invalid -> continue training new attempt without increasing z (like MATLAB)
             records.append({
@@ -397,10 +421,12 @@ def main():
                 "positive_ok": positive_ok,
                 "invalid": True,
             })
-            print(
-                f"[REJECT] ttl={ttl} best_val_scaled={best_val_mse_scaled:.4e} val_mse_orig={val_mse:.4e} positive={positive_ok}",
-                flush=True)
+            print(f"[REJECT] ttl={ttl} best_val_scaled={best_val_mse_scaled:.4e} "
+                  f"val_mse_orig={val_mse:.4e} positive={positive_ok} grid_min={grid_min:.4e} ", flush=True)
             continue
+
+    if z <= loops:
+        print(f"[WARN] Only collected {z - 1}/{loops} valid models within {max_attempts_total} attempts.")
 
     # pick best valid model by min val_mse
     valid = [r for r in records if r.get("z") is not None]
