@@ -14,4 +14,5 @@ Required:
 
 Note:
 - Proprietary data is not committed to this repository.
-- Provide a `data/demo/` dataset for reproducibility if possible.
+
+[//]: # (- Provide a `data/demo/` dataset for reproducibility if possible.)

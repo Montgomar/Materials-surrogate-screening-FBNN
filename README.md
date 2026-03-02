@@ -13,13 +13,14 @@ This repository implements a reproducible workflow for:
 - `outputs/` run artifacts (checkpoints, plots, metrics)
 
 ## Notes
-- Original baseline was implemented in MATLAB (LM training). This repo provides a Python pipeline designed for reproducibility and extensibility.
-- Private data/code can be shared upon request.
+- Original baseline was implemented in MATLAB.
+- This repo provides a Python pipeline designed for reproducibility and extensibility.
 
 ## Quickstart (Demo)
 ```bash
 pip install -r requirements.txt
 python src/train.py --config configs/train.yaml
-python src/evaluate.py --run_dir outputs/latest
+
+[//]: # (python src/evaluate.py --run_dir outputs/latest)
 python src/predict.py --config configs/screening.yaml
 python src/rank.py --config configs/screening.yaml
