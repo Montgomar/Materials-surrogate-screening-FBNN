@@ -5,7 +5,7 @@ project:
   save_tag: "u"   # predicted variable
 
 data:
-  xlsx_path: "TrainingData-ANN-All.xlsx"
+  xlsx_path: "TrainingData-All.xlsx"
   sheet_name: "Train"
   input_cols:
     start: 1
