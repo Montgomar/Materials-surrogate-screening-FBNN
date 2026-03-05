@@ -44,6 +44,8 @@ train:
   device: "cpu"              # auto|cpu|cuda
   patience: 50
   log_every: 20
+  lm_attempts_per_step: 10
+  lm_solve_method: "qr"
 
 validity_check:
   require_positive_on_grid: true

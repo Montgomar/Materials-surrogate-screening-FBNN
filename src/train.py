@@ -15,6 +15,8 @@ from sklearn.preprocessing import MinMaxScaler
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from torch.utils.data import TensorDataset, DataLoader
+import torch_levenberg_marquardt as tlm
 
 
 def set_seed(seed: int) -> None:
@@ -166,6 +168,11 @@ def train_one(model: nn.Module,
     criterion = nn.MSELoss()
 
     opt_name = cfg["train"]["optimizer"].lower()
+
+    optimizer = None
+    lm_module = None
+    lm_loader = None
+
     if opt_name == "lbfgs":
         lbfgs_max_iter = int(cfg["train"].get("lbfgs_max_iter", 20))
         lbfgs_history = int(cfg["train"].get("lbfgs_history_size", 10))
@@ -179,6 +186,24 @@ def train_one(model: nn.Module,
             history_size=lbfgs_history,
             line_search_fn=lbfgs_line_search,
         )
+
+    elif opt_name == "lm":
+        # Levenberg–Marquardt (third-party). Best suited for small/medium least-squares problems.
+        lm_attempts = int(cfg["train"].get("lm_attempts_per_step", 10))
+        lm_solve = str(cfg["train"].get("lm_solve_method", "qr"))
+
+        lm_module = tlm.training.LevenbergMarquardtModule(
+            model=model,
+            loss_fn=tlm.loss.MSELoss(),
+            learning_rate=lr,
+            attempts_per_step=lm_attempts,
+            solve_method=lm_solve,
+        )
+
+        # Full-batch DataLoader to mimic MATLAB LM training behavior.
+        train_ds = TensorDataset(x_train_t, y_train_t)
+        lm_loader = DataLoader(train_ds, batch_size=len(train_ds), shuffle=False)
+
     else:
         optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
 
@@ -213,8 +238,17 @@ def train_one(model: nn.Module,
                 loss_t = criterion(pred, y_train_t)
                 loss_t.backward()
                 return loss_t
-
             loss = optimizer.step(closure)
+
+        elif opt_name == "lm":
+            # Run exactly one LM epoch to keep existing early-stop / logging logic unchanged.
+            tlm.utils.fit(lm_module, lm_loader, epochs=1)
+
+            # Compute a scalar train loss for history logging (consistent with other optimizers).
+            with torch.no_grad():
+                pred = model(x_train_t)
+                loss = criterion(pred, y_train_t)
+
         else:
             optimizer.zero_grad(set_to_none=True)
             pred = model(x_train_t)
