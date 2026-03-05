@@ -167,7 +167,18 @@ def train_one(model: nn.Module,
 
     opt_name = cfg["train"]["optimizer"].lower()
     if opt_name == "lbfgs":
-        optimizer = torch.optim.LBFGS(model.parameters(), lr=lr, max_iter=20, history_size=100)
+        lbfgs_max_iter = int(cfg["train"].get("lbfgs_max_iter", 20))
+        lbfgs_history = int(cfg["train"].get("lbfgs_history_size", 10))
+        lbfgs_line_search = cfg["train"].get("lbfgs_line_search", "strong_wolfe")
+        lbfgs_line_search = None if (lbfgs_line_search is None or str(lbfgs_line_search).strip() == "") else str(
+            lbfgs_line_search)
+        optimizer = torch.optim.LBFGS(
+            model.parameters(),
+            lr=lr,
+            max_iter=lbfgs_max_iter,
+            history_size=lbfgs_history,
+            line_search_fn=lbfgs_line_search,
+        )
     else:
         optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
 
@@ -185,18 +196,27 @@ def train_one(model: nn.Module,
     best_val = float("inf")
     best_state = None
 
-    for ep in range(1, epochs + 1):
+    if opt_name == "lbfgs":
+        total_steps = int(cfg["train"].get("lbfgs_steps", epochs))
+    else:
+        total_steps = epochs
+
+    for ep in range(1, total_steps + 1):
         model.train()
+
         if opt_name == "lbfgs":
+            # IMPORTANT: closure must be deterministic and should not iterate over a DataLoader.
+            # We use full-batch tensors (already prepared) for stable LBFGS behavior.
             def closure():
-                optimizer.zero_grad()
+                optimizer.zero_grad(set_to_none=True)
                 pred = model(x_train_t)
-                loss = criterion(pred, y_train_t)
-                loss.backward()
-                return loss
+                loss_t = criterion(pred, y_train_t)
+                loss_t.backward()
+                return loss_t
+
             loss = optimizer.step(closure)
         else:
-            optimizer.zero_grad()
+            optimizer.zero_grad(set_to_none=True)
             pred = model(x_train_t)
             loss = criterion(pred, y_train_t)
             loss.backward()
@@ -217,7 +237,7 @@ def train_one(model: nn.Module,
             val_losses.append(float(val_loss))
 
             # progress print in terminal
-            # if ep == 1 or ep % log_every == 0 or ep == epochs:
+            # if ep == 1 or ep % log_every == 0 or ep == total_steps:
             #     print(
             #         f"[Epoch {ep:4d}/{epochs}] "
             #         f"train_loss={train_loss_value:.4e}  val_loss={val_loss:.4e}  best_val={best_val:.4e}",
@@ -372,6 +392,7 @@ def main():
 
         # validity criteria (match MATLAB: valPerformance <= targetMSE AND all(Pdt_output>0))
         if positive_ok and (best_val_mse_scaled <= target_mse):
+        # if positive_ok and (best_val_mse_orig <= target_mse):       # use orig mse as criteria
             # save this net
             torch.save(
                 {
@@ -408,6 +429,7 @@ def main():
             print(
                 f"[ACCEPT] ttl={ttl} z={z} best_val_scaled={best_val_mse_scaled:.4e} "
                 f"val_mse_orig={val_mse:.4e} positive={positive_ok} grid_min={grid_min:.4e} ",flush=True)
+            print("", flush=True)
         else:
             # invalid -> continue training new attempt without increasing z (like MATLAB)
             records.append({
@@ -423,6 +445,7 @@ def main():
             })
             print(f"[REJECT] ttl={ttl} best_val_scaled={best_val_mse_scaled:.4e} "
                   f"val_mse_orig={val_mse:.4e} positive={positive_ok} grid_min={grid_min:.4e} ", flush=True)
+            print("", flush=True)
             continue
 
     if z <= loops:

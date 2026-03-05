@@ -25,19 +25,23 @@ preprocess:
   remove_constant_rows: true
 
 model:
-  hidden_layers: [12, 5, 1]
+  hidden_layers: [12, 5, 1, 1]
   activation: "tanh"
   output_positive: false
   positive_mode: "softplus"   # ensure predictions > 0
 
 train:
-  optimizer: "adam"           # or "lbfgs"
-  lr: 0.001
+  optimizer: "lbfgs"           # "adam" or "lbfgs"
+  lr: 0.5
   weight_decay: 0.0
-  epochs: 600
-  target_mse: 0.05
+  epochs: 50
+  lbfgs_steps: 120
+  lbfgs_max_iter: 20                  # max. closure of every step (5~20)
+  lbfgs_history_size: 10              # 10~20
+  lbfgs_line_search: "strong_wolfe"   # or ""
+  target_mse: 0.005
   min_grad: 1.0e-7            # used only if we implement grad stop (optional)
-  device: "auto"              # auto|cpu|cuda
+  device: "cpu"              # auto|cpu|cuda
   patience: 50
   log_every: 20
 
